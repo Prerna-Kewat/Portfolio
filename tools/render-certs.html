@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>cert renderer</title></head>
+<body style="font:13px monospace;background:#111;color:#9f9">
+<pre id="log">starting…</pre>
+<canvas id="c" style="display:none"></canvas>
+<script src="/Prerna-Portfolio/tools/pdf.min.js"></script>
+<script>
+const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
+const SRC = '/Prerna-Portfolio/source-certs/';
+const OUT = '/Prerna-Portfolio/assets/certs/';
+const JOBS = [
+  ['coursera-uiux',  'Coursera _ Online Courses %26 Credentials From Top Educators. Join for Free _ Coursera.pdf'],
+  ['infosys-python', 'DBMS CERT.pdf'],
+  ['nptel-hci',      'Human Computer Interaction (In English).pdf'],
+  ['nptel-forests',  'Forests and their Management.pdf'],
+  ['iit-ropar',      'IIT Ropar Certi.pdf'],
+  ['tartanhq',       'Tartan Hq Certificate.pdf']
+];
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/Prerna-Portfolio/tools/pdf.worker.min.js';
+
+async function save(name, blob){
+  const r = await fetch('/__save?name=' + encodeURIComponent('Prerna-Portfolio/assets/certs/' + name), { method:'PUT', body: blob });
+  if (!r.ok) throw new Error('save failed ' + r.status);
+  return r.text();
+}
+
+(async () => {
+  try {
+    for (const [key, file] of JOBS) {
+      const url = SRC + file;
+      try {
+        const doc = await pdfjsLib.getDocument(url).promise;
+        const page = await doc.getPage(1);
+        const base = page.getViewport({ scale: 1 });
+        const scale = Math.min(2, 1400 / base.width);
+        const vp = page.getViewport({ scale });
+        const canvas = document.getElementById('c');
+        canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        const msg = await save(key + '.png', blob);
+        log('OK ' + key + ' ' + canvas.width + 'x' + canvas.height + ' (' + (blob.size/1024).toFixed(0) + ' KB) -> ' + msg);
+        doc.destroy();
+      } catch (e) { log('FAIL ' + key + ' :: ' + (e && e.message || e)); }
+    }
+    log('ALL DONE');
+  } catch (e) { log('FATAL ' + (e && e.message || e)); }
+})();
+</script>
+</body></html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>thumb renderer</title></head>
+<body style="font:13px monospace;background:#111;color:#9f9">
+<pre id="log">starting…</pre>
+<canvas id="c" style="display:none"></canvas>
+<script>
+const log = m => { document.getElementById('log').textContent += '\n' + m; };
+const KEYS = ['coursera-uiux','infosys-python','nptel-hci','nptel-forests','iit-ropar','tartanhq'];
+(async () => {
+  for (const key of KEYS) {
+    try {
+      const img = new Image();
+      img.src = '/Prerna-Portfolio/assets/certs/' + key + '.png';
+      await img.decode();
+      const scale = Math.min(1, 640 / img.naturalWidth);
+      const c = document.getElementById('c');
+      c.width = Math.round(img.naturalWidth * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+      const r = await fetch('/__save?name=' + encodeURIComponent('Prerna-Portfolio/assets/certs/' + key + '-thumb.png'), { method:'PUT', body: blob });
+      log('OK ' + key + '-thumb ' + c.width + 'x' + c.height + ' (' + (blob.size/1024).toFixed(0) + ' KB) ' + (r.ok ? 'saved' : 'FAIL ' + r.status));
+    } catch (e) { log('FAIL ' + key + ' :: ' + (e && e.message || e)); }
+  }
+  log('ALL DONE');
+})();
+</script>
+</body></html>
